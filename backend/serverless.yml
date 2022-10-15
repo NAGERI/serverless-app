@@ -7,6 +7,7 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
+  - serverless-aws-documentation
   - serverless-reqvalidator-plugin
 
 provider:
@@ -20,7 +21,6 @@ provider:
   tracing:
     lambda: true
     apiGateway: true
-
   # Use these variables in the functions and resouorces section below. For example,
   # ${self:provider.environment.S3_BUCKET}
   environment:
@@ -29,7 +29,6 @@ provider:
     # TODOS_CREATED_AT_INDEX: CreatedAtIndex
     S3_BUCKET: serverless-todo-images-166996508879-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
-    AUTH0_SECRET_ID: RcltEqmKQ73RfMyG1_sfH30cN97zMajhs8mMJkIqa0JKlLuBqdNjcGrCwMlrCi9k
 
   # Enable API Gateway logs
   logs:
@@ -43,6 +42,41 @@ provider:
             - xray:PutTelemetryRecords
             - xray:PutTraceSegments
           Resource: '*'
+custom:
+  documentation:
+    api:
+      info:
+        version: '1.0.0'
+        title: serverless-api
+        description: serverless-api
+    models:
+      - name: CreateTodoRequest
+        contentType: 'application/json'
+        schema:
+          required:
+            - name
+            - dueDate
+          properties:
+            name:
+              minLength: 1
+              type: string
+            dueDate:
+              type: string
+      - name: UpdateTodoRequest
+        contentType: 'application/json'
+        schema:
+          required:
+            - name
+            - dueDate
+            - done
+          properties:
+            name:
+              minLength: 1
+              type: string
+            dueDate:
+              type: string
+            done:
+              type: boolean
 
 functions:
   Auth:
@@ -71,9 +105,6 @@ functions:
           - '*'
 
   # TODO: Configure this function -
-  # Provide iamRoleStatements property. Decide the Actions and AWS Resource.
-  # To refer to an AWS resource defined in the "Resources" section, you can use "Resource: !GetAtt <resource-name>.Arn"
-  # To validate incoming HTTP requests, we have provided the request schemas in function definition below.
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -82,14 +113,11 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          # request:
-          #   schemas:
-          #     application/json: ${file(models/create-todo-model.json)}
-          # documentation:
-          #   summary: 'Create a new todo item'
-          #   description: 'Create a new todo item'
-          #   requestModels:
-          #     'application/json': CreateTodoRequest
+          documentation:
+            summary: 'Create a new todo item'
+            description: 'Create a new todo item'
+            requestModels:
+              'application/json': CreateTodoRequest
           reqValidatorName: RequestBodyValidator
     iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-create-todo-role-${self:provider.stage}
     iamRoleStatements:
@@ -104,7 +132,6 @@ functions:
           - '*'
 
   # TODO: Configure this function
-  # Provide property for setting up CORS, Authorizer, iamRoleStatements, and request schemas
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
@@ -113,11 +140,11 @@ functions:
           path: todos/{todoId}
           cors: true
           authorizer: Auth
-          # documentation:
-          #   summary: 'Update a todo item'
-          #   description: 'Update a todo item'
-          #   requestModels:
-          #     'application/json': UpdateTodoRequest
+          documentation:
+            summary: 'Update a todo item'
+            description: 'Update a todo item'
+            requestModels:
+              'application/json': UpdateTodoRequest
           reqValidatorName: RequestBodyValidator
     iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-update-todo-role-${self:provider.stage}
     iamRoleStatements:
@@ -132,7 +159,6 @@ functions:
           - '*'
 
   # TODO: Configure this function
-  # Provide property for setting up CORS, Authorizer, iamRoleStatements
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -154,7 +180,6 @@ functions:
           - '*'
 
   # TODO: Configure this function
-  # Provide property for setting up CORS, Authorizer, iamRoleStatements
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
@@ -175,7 +200,6 @@ resources:
   Resources:
     # Add necessary AWS resources. You will need at least the following AWS resources
     # TODO: Fill the properties
-    # Feel free to change the names as you like.
     RequestBodyValidator:
       Type: AWS::ApiGateway::RequestValidator
       Properties:
@@ -232,7 +256,6 @@ resources:
         ValidateRequestParameters: false
 
     # TODO: Complete the bucket properties below.
-    # Do not forget to add the CorsConfiguration propoerty
     AttachmentsBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -252,7 +275,6 @@ resources:
               MaxAge: 3000
 
     # TODO: Complete the policy below and attach it to the bucket defined above
-    # For cross referencing the name of the bucket, use "!Ref AttachmentsBucket"
     BucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
